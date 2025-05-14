@@ -1,33 +1,9 @@
-import type { RefObject } from "react";
-
-import { calculateZoomLevel } from "@lexical/utils";
-
 import { clamp } from "@/utils";
+import { calculateZoomLevel } from "@lexical/utils";
 import type { LexicalEditor } from "lexical";
-
-const Direction = {
-  east: 1 << 0,
-  north: 1 << 3,
-  south: 1 << 1,
-  west: 1 << 2,
-};
-
-type Positioning = {
-  currentHeight: "inherit" | number;
-  currentWidth: "inherit" | number;
-  direction: number;
-  isResizing: boolean;
-  ratio: number;
-  startHeight: number;
-  startWidth: number;
-  startX: number;
-  startY: number;
-};
-
-type UserSelect = {
-  priority: string;
-  value: string;
-};
+import type { RefObject } from "react";
+import { Direction } from "./constants";
+import type { Positioning, UserSelect } from "./types";
 
 const setStartCursor = (
   editor: LexicalEditor,
@@ -90,6 +66,7 @@ const handlePointerMove =
   (
     editor: LexicalEditor,
     imageRef: RefObject<HTMLElement | null>,
+    controlWrapperRef: RefObject<HTMLDivElement | null>,
     positioningRef: RefObject<Positioning>,
     maxWidth?: number,
   ) =>
@@ -112,14 +89,16 @@ const handlePointerMove =
 
     const image = imageRef.current;
     const positioning = positioningRef.current;
+    const controlWrapper = controlWrapperRef.current;
 
     const isHorizontal =
       positioning.direction & (Direction.east | Direction.west);
     const isVertical =
       positioning.direction & (Direction.south | Direction.north);
 
-    if (image !== null && positioning.isResizing) {
+    if (image !== null && controlWrapper !== null && positioning.isResizing) {
       const zoom = calculateZoomLevel(image);
+
       // Corner cursor
       if (isHorizontal && isVertical) {
         let diff = Math.floor(positioning.startX - event.clientX / zoom);
@@ -134,9 +113,15 @@ const handlePointerMove =
         const height = width / positioning.ratio;
         image.style.width = `${width}px`;
         image.style.height = `${height}px`;
-        positioning.currentHeight = height;
         positioning.currentWidth = width;
-      } else if (isVertical) {
+        positioning.currentHeight = height;
+        controlWrapper.style.width = `${width}px`;
+        controlWrapper.style.height = `${height}px`;
+
+        return;
+      }
+
+      if (isVertical) {
         let diff = Math.floor(positioning.startY - event.clientY / zoom);
         diff = positioning.direction & Direction.south ? -diff : diff;
 
@@ -148,19 +133,23 @@ const handlePointerMove =
 
         image.style.height = `${height}px`;
         positioning.currentHeight = height;
-      } else {
-        let diff = Math.floor(positioning.startX - event.clientX / zoom);
-        diff = positioning.direction & Direction.east ? -diff : diff;
+        controlWrapper.style.height = `${height}px`;
 
-        const width = clamp(
-          positioning.startWidth + diff,
-          minWidth,
-          maxWidthContainer,
-        );
-
-        image.style.width = `${width}px`;
-        positioning.currentWidth = width;
+        return;
       }
+
+      let diff = Math.floor(positioning.startX - event.clientX / zoom);
+      diff = positioning.direction & Direction.east ? -diff : diff;
+
+      const width = clamp(
+        positioning.startWidth + diff,
+        minWidth,
+        maxWidthContainer,
+      );
+
+      image.style.width = `${width}px`;
+      positioning.currentWidth = width;
+      controlWrapper.style.width = `${width}px`;
     }
   };
 
@@ -200,7 +189,13 @@ const handlePointerUp =
 
       document.removeEventListener(
         "pointermove",
-        handlePointerMove(editor, imageRef, positioningRef, maxWidth),
+        handlePointerMove(
+          editor,
+          imageRef,
+          controlWrapperRef,
+          positioningRef,
+          maxWidth,
+        ),
       );
       document.removeEventListener(
         "pointerup",
@@ -275,7 +270,13 @@ const handlePointerDown =
 
       document.addEventListener(
         "pointermove",
-        handlePointerMove(editor, imageRef, positioningRef, maxWidth),
+        handlePointerMove(
+          editor,
+          imageRef,
+          controlWrapperRef,
+          positioningRef,
+          maxWidth,
+        ),
       );
       document.addEventListener(
         "pointerup",

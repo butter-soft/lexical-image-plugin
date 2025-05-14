@@ -1,6 +1,6 @@
-import { useRef } from "react";
-
 import type { LexicalEditor } from "lexical";
+import { useRef, type RefObject } from "react";
+
 import { Direction } from "./constants";
 import { onPointerDown } from "./handler";
 import type { Positioning } from "./types";
@@ -13,7 +13,7 @@ const ImageResizer = ({
   editor,
 }: {
   editor: LexicalEditor;
-  imageRef: { current: null | HTMLElement };
+  imageRef: RefObject<HTMLElement | null>;
   maxWidth?: number;
   onResizeEnd: (width: "inherit" | number, height: "inherit" | number) => void;
   onResizeStart: () => void;
@@ -47,37 +47,114 @@ const ImageResizer = ({
   });
 
   return (
-    <div ref={controlWrapperRef}>
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: imageRef.current?.clientWidth,
+        height: imageRef.current?.clientHeight,
+      }}
+      ref={controlWrapperRef}
+    >
       <div
-        className="controller north"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          top: "-0.25rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          cursor: "ns-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.north)}
       />
       <div
-        className="controller northeast"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          right: "-0.25rem",
+          top: "-0.25rem",
+          cursor: "nesw-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.north | Direction.east)}
       />
       <div
-        className="controller east"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          top: "50%",
+          right: "-0.25rem",
+          transform: "translateY(-50%)",
+          cursor: "ew-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.east)}
       />
       <div
-        className="controller southeast"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          bottom: "-0.25rem",
+          right: "-0.25rem",
+          cursor: "nwse-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.south | Direction.east)}
       />
       <div
-        className="controller south"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          bottom: "-0.25rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          cursor: "ns-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.south)}
       />
       <div
-        className="controller southwest"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          bottom: "-0.25rem",
+          left: "-0.25rem",
+          cursor: "nesw-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.south | Direction.west)}
       />
       <div
-        className="controller west"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          left: "-0.25rem",
+          top: "50%",
+          transform: "translateY(-50%)",
+          cursor: "ew-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.west)}
       />
       <div
-        className="controller northwest"
+        style={{
+          position: "absolute",
+          width: "0.5rem",
+          height: "0.5rem",
+          backgroundColor: "black",
+          left: "-0.25rem",
+          top: "-0.25rem",
+          cursor: "nwse-resize",
+        }}
         onPointerDown={handlePointerDown(Direction.north | Direction.west)}
       />
     </div>

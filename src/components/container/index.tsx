@@ -1,7 +1,6 @@
 import { RIGHT_CLICK_IMAGE_COMMAND } from "@/commands";
 import { ImageResizer } from "@/components/resizer";
 import { $isImageNode } from "@/helper";
-import type { ImageProps } from "@/types";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
@@ -15,13 +14,12 @@ import {
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
   DRAGSTART_COMMAND,
-  KEY_BACKSPACE_COMMAND,
-  KEY_DELETE_COMMAND,
   KEY_ENTER_COMMAND,
   KEY_ESCAPE_COMMAND,
   SELECTION_CHANGE_COMMAND,
   type BaseSelection,
   type LexicalEditor,
+  type NodeKey,
 } from "lexical";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { BrokenImage } from "./broken";
@@ -30,62 +28,47 @@ import { LazyImage } from "./lazy";
 const ImageContainer = ({
   src,
   alt,
-  key,
+  nodeKey,
   width,
   height,
   maxWidth,
   resizable,
-}: ImageProps) => {
+}: {
+  src: string;
+  alt: string;
+  nodeKey: NodeKey;
+  width: "inherit" | number;
+  height: "inherit" | number;
+  maxWidth: number;
+  resizable: boolean;
+}) => {
   const [editor] = useLexicalComposerContext();
+  const [isSelected, setSelected, clearSelection] =
+    useLexicalNodeSelection(nodeKey);
+  const isEditable = useLexicalEditable();
 
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const imageRef = useRef<null | HTMLImageElement>(null);
   const activeEditorRef = useRef<LexicalEditor | null>(null);
 
-  const [isResizing, setIsResizing] = useState(false);
-  const [isLoadError, setIsLoadError] = useState(false);
+  const [isLoadError, setIsLoadError] = useState<boolean>(false);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
 
   const [selection, setSelection] = useState<BaseSelection | null>(null);
 
-  const [isSelected, setSelected, clearSelection] =
-    useLexicalNodeSelection(key);
-
-  const isEditable = useLexicalEditable();
-
-  const $onDelete = useCallback(
-    (payload: KeyboardEvent) => {
-      const deleteSelection = $getSelection();
-      if (isSelected && $isNodeSelection(deleteSelection)) {
-        const event: KeyboardEvent = payload;
-        event.preventDefault();
-        editor.update(() => {
-          deleteSelection.getNodes().forEach((node) => {
-            if ($isImageNode(node)) {
-              node.remove();
-            }
-          });
-        });
-      }
-      return false;
-    },
-    [editor, isSelected],
-  );
-
   const $onEnter = useCallback(
     (event: KeyboardEvent) => {
+      console.log("$onEnter");
+
       const latestSelection = $getSelection();
-      const buttonElem = buttonRef.current;
+
       if (
         isSelected &&
         $isNodeSelection(latestSelection) &&
         latestSelection.getNodes().length === 1
       ) {
-        if (buttonElem !== null && buttonElem !== document.activeElement) {
-          event.preventDefault();
-          buttonElem.focus();
-          return true;
-        }
+        return true;
       }
+
       return false;
     },
     [isSelected],
@@ -93,7 +76,8 @@ const ImageContainer = ({
 
   const $onEscape = useCallback(
     (event: KeyboardEvent) => {
-      if (buttonRef.current === event.target) {
+      console.log("$onEscape");
+      if (isSelected) {
         $setSelection(null);
         editor.update(() => {
           setSelected(true);
@@ -141,7 +125,10 @@ const ImageContainer = ({
           $isRangeSelection(latestSelection) &&
           latestSelection.getNodes().length === 1
         ) {
-          editor.dispatchCommand(RIGHT_CLICK_IMAGE_COMMAND, event);
+          editor.dispatchCommand(
+            RIGHT_CLICK_IMAGE_COMMAND,
+            event as MouseEvent,
+          );
         }
       });
     },
@@ -149,9 +136,15 @@ const ImageContainer = ({
   );
 
   useEffect(() => {
-    return mergeRegister(
+    const rootElement = editor.getRootElement();
+    const unregister = mergeRegister(
       editor.registerUpdateListener(({ editorState }) => {
-        setSelection(editorState.read(() => $getSelection()));
+        const updatedSelection = editorState.read(() => $getSelection());
+        if ($isNodeSelection(updatedSelection)) {
+          setSelection(updatedSelection);
+        } else {
+          setSelection(null);
+        }
       }),
       editor.registerCommand(
         SELECTION_CHANGE_COMMAND,
@@ -184,16 +177,6 @@ const ImageContainer = ({
         },
         COMMAND_PRIORITY_LOW,
       ),
-      editor.registerCommand(
-        KEY_DELETE_COMMAND,
-        $onDelete,
-        COMMAND_PRIORITY_LOW,
-      ),
-      editor.registerCommand(
-        KEY_BACKSPACE_COMMAND,
-        $onDelete,
-        COMMAND_PRIORITY_LOW,
-      ),
       editor.registerCommand(KEY_ENTER_COMMAND, $onEnter, COMMAND_PRIORITY_LOW),
       editor.registerCommand(
         KEY_ESCAPE_COMMAND,
@@ -201,13 +184,19 @@ const ImageContainer = ({
         COMMAND_PRIORITY_LOW,
       ),
     );
+
+    rootElement?.addEventListener("contextmenu", onRightClick);
+
+    return () => {
+      unregister();
+      rootElement?.removeEventListener("contextmenu", onRightClick);
+    };
   }, [
     clearSelection,
     editor,
     isResizing,
     isSelected,
-    key,
-    $onDelete,
+    nodeKey,
     $onEnter,
     $onEscape,
     onClick,
@@ -225,7 +214,7 @@ const ImageContainer = ({
     }, 200);
 
     editor.update(() => {
-      const node = $getNodeByKey(key);
+      const node = $getNodeByKey(nodeKey);
       if ($isImageNode(node)) {
         node.setWidthAndHeight(nextWidth, nextHeight);
       }
@@ -241,29 +230,21 @@ const ImageContainer = ({
 
   return (
     <Suspense fallback={null}>
-      <>
-        <div draggable={draggable}>
-          {isLoadError ? (
-            <BrokenImage />
-          ) : (
-            <LazyImage
-              //   className={cn(
-              //     isFocused ? "outline outline-2 outline-black" : "",
-              //     $isNodeSelection(selection)
-              //       ? "cursor-grab active:cursor-grabbing"
-              //       : "",
-              //   )}
-              src={src}
-              alt={alt}
-              imageRef={imageRef}
-              width={width}
-              height={height}
-              maxWidth={maxWidth}
-              onError={() => setIsLoadError(true)}
-            />
-          )}
-        </div>
-
+      <div draggable={draggable}>
+        {isLoadError ? (
+          <BrokenImage />
+        ) : (
+          <LazyImage
+            src={src}
+            alt={alt}
+            imageRef={imageRef}
+            width={width}
+            height={height}
+            maxWidth={maxWidth}
+            onError={() => setIsLoadError(true)}
+            isFocused={isFocused}
+          />
+        )}
         {resizable && $isNodeSelection(selection) && isFocused && (
           <ImageResizer
             editor={editor}
@@ -273,7 +254,7 @@ const ImageContainer = ({
             onResizeEnd={onResizeEnd}
           />
         )}
-      </>
+      </div>
     </Suspense>
   );
 };

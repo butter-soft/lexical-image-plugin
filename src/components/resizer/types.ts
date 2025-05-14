@@ -9,3 +9,8 @@ export type Positioning = {
   startX: number;
   startY: number;
 };
+
+export type UserSelect = {
+  priority: string;
+  value: string;
+};
