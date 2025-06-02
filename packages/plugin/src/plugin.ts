@@ -1,4 +1,5 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { DRAG_DROP_PASTE } from "@lexical/rich-text";
 import { mergeRegister } from "@lexical/utils";
 import { INSERT_IMAGE_COMMAND, SWITCH_IMAGES_COMMAND } from "@plugin/commands";
 import { ImageNode } from "@plugin/node";
@@ -14,6 +15,7 @@ import {
 } from "lexical";
 import { useEffect } from "react";
 import {
+  $onDragDropPaste,
   $onDragOver,
   $onDragStart,
   $onDrop,
@@ -52,10 +54,13 @@ export const ImagePlugin = () => {
       ),
       editor.registerCommand<DragEvent>(
         DROP_COMMAND,
-        (event) => {
-          return $onDrop(event, editor);
-        },
+        $onDrop(editor),
         COMMAND_PRIORITY_HIGH,
+      ),
+      editor.registerCommand<File[]>(
+        DRAG_DROP_PASTE,
+        $onDragDropPaste(editor),
+        COMMAND_PRIORITY_LOW,
       ),
     );
   }, [editor]);

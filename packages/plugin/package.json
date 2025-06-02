@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@lexical/react": "catalog:",
+    "@lexical/rich-text": "catalog:",
     "@lexical/utils": "catalog:",
     "lexical": "catalog:",
     "react": "catalog:",

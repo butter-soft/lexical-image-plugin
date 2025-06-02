@@ -1,5 +1,9 @@
-import { $wrapNodeInElement } from "@lexical/utils";
-import { TRANSPARENT_IMAGE } from "@plugin/constants";
+import {
+  $wrapNodeInElement,
+  isMimeType,
+  mediaFileReader,
+} from "@lexical/utils";
+import { ACCEPTABLE_IMAGE_TYPES, TRANSPARENT_IMAGE } from "@plugin/constants";
 import { $getImageNodeInSelection } from "@plugin/helper";
 import { $createImageNode } from "@plugin/node";
 import type { InsertImagePayload } from "@plugin/types";
@@ -84,7 +88,7 @@ export const $onDragOver = (event: DragEvent) => {
   return true;
 };
 
-export const $onDrop = (event: DragEvent, editor: LexicalEditor) => {
+export const $onDrop = (editor: LexicalEditor) => (event: DragEvent) => {
   const node = $getImageNodeInSelection();
 
   if (!node) {
@@ -111,6 +115,29 @@ export const $onDrop = (event: DragEvent, editor: LexicalEditor) => {
     $setSelection(rangeSelection);
     editor.dispatchCommand(INSERT_IMAGE_COMMAND, data);
   }
+
+  return true;
+};
+
+const processDragDropPaste =
+  (editor: LexicalEditor) => async (files: File[]) => {
+    const filesResult = await mediaFileReader(
+      files,
+      [ACCEPTABLE_IMAGE_TYPES].flatMap((x) => x),
+    );
+
+    for (const { file, result } of filesResult) {
+      if (isMimeType(file, ACCEPTABLE_IMAGE_TYPES)) {
+        editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
+          alt: file.name,
+          src: result,
+        });
+      }
+    }
+  };
+
+export const $onDragDropPaste = (editor: LexicalEditor) => (files: File[]) => {
+  processDragDropPaste(editor)(files);
 
   return true;
 };

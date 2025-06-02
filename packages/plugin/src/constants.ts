@@ -3,3 +3,10 @@ export const BROKEN_IMAGE =
 
 export const TRANSPARENT_IMAGE =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+export const ACCEPTABLE_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+];

@@ -28,6 +28,7 @@ const __lexical_react_useLexicalEditable = __toESM(require("@lexical/react/useLe
 const __lexical_react_useLexicalNodeSelection = __toESM(require("@lexical/react/useLexicalNodeSelection"));
 const __lexical_utils = __toESM(require("@lexical/utils"));
 const react_jsx_runtime = __toESM(require("react/jsx-runtime"));
+const __lexical_rich_text = __toESM(require("@lexical/rich-text"));
 
 //#region src/commands.ts
 const INSERT_IMAGE_COMMAND = (0, lexical.createCommand)("INSERT_IMAGE_COMMAND");
@@ -358,6 +359,12 @@ const $getImageNodeInSelection = () => {
 //#region src/constants.ts
 const BROKEN_IMAGE = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PGxpbmUgeDE9IjIiIHgyPSIyMiIgeTE9IjIiIHkyPSIyMiIvPjxwYXRoIGQ9Ik0xMC40MSAxMC40MWEyIDIgMCAxIDEtMi44My0yLjgzIi8+PGxpbmUgeDE9IjEzLjUiIHgyPSI2IiB5MT0iMTMuNSIgeTI9IjIxIi8+PGxpbmUgeDE9IjE4IiB4Mj0iMjEiIHkxPSIxMiIgeTI9IjE1Ii8+PHBhdGggZD0iTTMuNTkgMy41OUExLjk5IDEuOTkgMCAwIDAgMyA1djE0YTIgMiAwIDAgMCAyIDJoMTRjLjU1IDAgMS4wNTItLjIyIDEuNDEtLjU5Ii8+PHBhdGggZD0iTTIxIDE1VjVhMiAyIDAgMCAwLTItMkg5Ii8+PC9zdmc+";
 const TRANSPARENT_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const ACCEPTABLE_IMAGE_TYPES = [
+	"image/jpeg",
+	"image/jpg",
+	"image/png",
+	"image/gif"
+];
 
 //#endregion
 //#region src/components/container/broken.tsx
@@ -476,12 +483,12 @@ const ImageContainer = ({ src, alt, nodeKey, width, height, maxWidth, resizable 
 	const [isLoadError, setIsLoadError] = (0, react.useState)(false);
 	const [isResizing, setIsResizing] = (0, react.useState)(false);
 	const [selection, setSelection] = (0, react.useState)(null);
-	const $onEnter = (0, react.useCallback)((event) => {
+	const $onEnter = (0, react.useCallback)((_event) => {
 		const latestSelection = (0, lexical.$getSelection)();
 		if (isSelected && (0, lexical.$isNodeSelection)(latestSelection) && latestSelection.getNodes().length === 1) return true;
 		return false;
 	}, [isSelected]);
-	const $onEscape = (0, react.useCallback)((event) => {
+	const $onEscape = (0, react.useCallback)((_event) => {
 		if (isSelected) {
 			(0, lexical.$setSelection)(null);
 			editor.update(() => {
@@ -747,7 +754,7 @@ const $onDragOver = (event) => {
 	if (!canDropImage(event)) event.preventDefault();
 	return true;
 };
-const $onDrop = (event, editor) => {
+const $onDrop = (editor) => (event) => {
 	const node = $getImageNodeInSelection();
 	if (!node) return false;
 	const data = getDragImageData(event);
@@ -763,6 +770,17 @@ const $onDrop = (event, editor) => {
 	}
 	return true;
 };
+const processDragDropPaste = (editor) => async (files) => {
+	const filesResult = await (0, __lexical_utils.mediaFileReader)(files, [ACCEPTABLE_IMAGE_TYPES].flatMap((x) => x));
+	for (const { file, result } of filesResult) if ((0, __lexical_utils.isMimeType)(file, ACCEPTABLE_IMAGE_TYPES)) editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
+		alt: file.name,
+		src: result
+	});
+};
+const $onDragDropPaste = (editor) => (files) => {
+	processDragDropPaste(editor)(files);
+	return true;
+};
 
 //#endregion
 //#region src/plugin.ts
@@ -770,9 +788,7 @@ const ImagePlugin = () => {
 	const [editor] = (0, __lexical_react_LexicalComposerContext.useLexicalComposerContext)();
 	(0, react.useEffect)(() => {
 		if (!editor.hasNodes([ImageNode])) throw new Error("ImagePlugin: ImageNode is not registered on editor");
-		return (0, __lexical_utils.mergeRegister)(editor.registerCommand(INSERT_IMAGE_COMMAND, $onInsert, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(SWITCH_IMAGES_COMMAND, $onSwitch, lexical.COMMAND_PRIORITY_CRITICAL), editor.registerCommand(lexical.DRAGSTART_COMMAND, $onDragStart, lexical.COMMAND_PRIORITY_HIGH), editor.registerCommand(lexical.DRAGOVER_COMMAND, $onDragOver, lexical.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical.DROP_COMMAND, (event) => {
-			return $onDrop(event, editor);
-		}, lexical.COMMAND_PRIORITY_HIGH));
+		return (0, __lexical_utils.mergeRegister)(editor.registerCommand(INSERT_IMAGE_COMMAND, $onInsert, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(SWITCH_IMAGES_COMMAND, $onSwitch, lexical.COMMAND_PRIORITY_CRITICAL), editor.registerCommand(lexical.DRAGSTART_COMMAND, $onDragStart, lexical.COMMAND_PRIORITY_HIGH), editor.registerCommand(lexical.DRAGOVER_COMMAND, $onDragOver, lexical.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical.DROP_COMMAND, $onDrop(editor), lexical.COMMAND_PRIORITY_HIGH), editor.registerCommand(__lexical_rich_text.DRAG_DROP_PASTE, $onDragDropPaste(editor), lexical.COMMAND_PRIORITY_LOW));
 	}, [editor]);
 	return null;
 };

@@ -56,7 +56,7 @@ const ImageContainer = ({
   const [selection, setSelection] = useState<BaseSelection | null>(null);
 
   const $onEnter = useCallback(
-    (event: KeyboardEvent) => {
+    (_event: KeyboardEvent) => {
       const latestSelection = $getSelection();
 
       if (
@@ -73,7 +73,7 @@ const ImageContainer = ({
   );
 
   const $onEscape = useCallback(
-    (event: KeyboardEvent) => {
+    (_event: KeyboardEvent) => {
       if (isSelected) {
         $setSelection(null);
         editor.update(() => {

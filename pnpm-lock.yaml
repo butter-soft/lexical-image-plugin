@@ -9,6 +9,9 @@ catalogs:
     '@lexical/react':
       specifier: ^0.31.2
       version: 0.31.2
+    '@lexical/rich-text':
+      specifier: ^0.31.2
+      version: 0.31.2
     '@lexical/utils':
       specifier: ^0.31.2
       version: 0.31.2
@@ -95,6 +98,9 @@ importers:
       '@lexical/react':
         specifier: 'catalog:'
         version: 0.31.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.27)
+      '@lexical/rich-text':
+        specifier: 'catalog:'
+        version: 0.31.2
       '@lexical/utils':
         specifier: 'catalog:'
         version: 0.31.2
