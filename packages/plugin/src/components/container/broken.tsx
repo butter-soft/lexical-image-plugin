@@ -1,4 +1,4 @@
-import { BROKEN_IMAGE } from "./constants";
+import { BROKEN_IMAGE } from "@plugin/constants";
 
 export const BrokenImage = () => {
   return (

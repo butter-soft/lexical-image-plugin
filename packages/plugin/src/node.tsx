@@ -131,13 +131,14 @@ class ImageNode extends DecoratorNode<React.JSX.Element> {
     const className = theme.image;
 
     if (className !== undefined) {
-      div.className = className;
+      div.className = `image-node ${className}`;
 
       return div;
     }
 
     // resizer boundary
     div.style.position = "relative";
+    div.className = "image-node";
 
     return div;
   }

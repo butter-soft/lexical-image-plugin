@@ -9,6 +9,7 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ImageButton } from "./image-button";
+import TreeViewPlugin from "./tree-view";
 
 const theme = {
   // Theme styling goes here
@@ -38,6 +39,7 @@ const Editor = () => {
       <RichTextPlugin
         contentEditable={
           <ContentEditable
+            className="editor-root"
             style={{ border: "1px solid black" }}
             aria-placeholder={"Enter some text..."}
             placeholder={<div>Enter some text...</div>}
@@ -48,6 +50,7 @@ const Editor = () => {
       <HistoryPlugin />
       <AutoFocusPlugin />
       <ImagePlugin />
+      <TreeViewPlugin />
     </LexicalComposer>
   );
 };

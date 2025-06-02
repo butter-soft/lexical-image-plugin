@@ -1,10 +1,10 @@
-import { $applyNodeReplacement, $createParagraphNode, $getNodeByKey, $getSelection, $insertNodes, $isNodeSelection, $isRangeSelection, $isRootOrShadowRoot, $setSelection, CLICK_COMMAND, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_LOW, DRAGSTART_COMMAND, DecoratorNode, KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, SELECTION_CHANGE_COMMAND, createCommand } from "lexical";
+import { $applyNodeReplacement, $createParagraphNode, $createRangeSelection, $getNodeByKey, $getSelection, $insertNodes, $isNodeSelection, $isRangeSelection, $isRootOrShadowRoot, $setSelection, CLICK_COMMAND, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_LOW, DRAGOVER_COMMAND, DRAGSTART_COMMAND, DROP_COMMAND, DecoratorNode, KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, SELECTION_CHANGE_COMMAND, createCommand, getDOMSelectionFromTarget } from "lexical";
 import * as React from "react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
-import { $wrapNodeInElement, calculateZoomLevel, mergeRegister } from "@lexical/utils";
+import { $wrapNodeInElement, calculateZoomLevel, isHTMLElement, mergeRegister } from "@lexical/utils";
 import { jsx, jsxs } from "react/jsx-runtime";
 
 //#region src/commands.ts
@@ -24,6 +24,37 @@ const Direction = {
 //#endregion
 //#region src/utils.ts
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+/**
+* `ContentEditable` must have `.editor-root` as `class`
+*/
+function canDropImage(event) {
+	const target = event.target;
+	return !!(isHTMLElement(target) && !target.closest("code, div.image-node") && isHTMLElement(target.parentElement) && target.parentElement.closest("div.editor-root"));
+}
+const getDragImageData = (event) => {
+	const dragData = event.dataTransfer?.getData("application/x-lexical-drag");
+	if (!dragData) return null;
+	const { type, data } = JSON.parse(dragData);
+	if (type !== "image") return null;
+	return data;
+};
+const getDragSelection = (event) => {
+	const domSelection = getDOMSelectionFromTarget(event.target);
+	if (document.caretPositionFromPoint) {
+		const range = document.createRange();
+		const caretPosition = document.caretPositionFromPoint(event.clientX, event.clientY);
+		if (!caretPosition) throw Error(`Cannot get the selection when dragging`);
+		range.setStart(caretPosition.offsetNode, caretPosition.offset);
+		range.setEnd(caretPosition.offsetNode, caretPosition.offset);
+		return range;
+	}
+	if (document.caretRangeFromPoint) return document.caretRangeFromPoint(event.clientX, event.clientY);
+	if (event.rangeParent && domSelection !== null) {
+		domSelection.collapse(event.rangeParent, event.rangeOffset || 0);
+		return domSelection.getRangeAt(0);
+	}
+	throw Error(`Cannot get the selection when dragging`);
+};
 
 //#endregion
 //#region src/components/resizer/handler.ts
@@ -293,10 +324,18 @@ const ImageResizer = ({ onResizeStart, onResizeEnd, imageRef, maxWidth, editor }
 //#endregion
 //#region src/helper.ts
 const $isImageNode = (node) => node?.getType() === "image";
+const $getImageNodeInSelection = () => {
+	const selection = $getSelection();
+	if (!$isNodeSelection(selection)) return null;
+	const nodes = selection.getNodes();
+	const node = nodes[0];
+	return $isImageNode(node) ? node : null;
+};
 
 //#endregion
-//#region src/components/container/constants.ts
+//#region src/constants.ts
 const BROKEN_IMAGE = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PGxpbmUgeDE9IjIiIHgyPSIyMiIgeTE9IjIiIHkyPSIyMiIvPjxwYXRoIGQ9Ik0xMC40MSAxMC40MWEyIDIgMCAxIDEtMi44My0yLjgzIi8+PGxpbmUgeDE9IjEzLjUiIHgyPSI2IiB5MT0iMTMuNSIgeTI9IjIxIi8+PGxpbmUgeDE9IjE4IiB4Mj0iMjEiIHkxPSIxMiIgeTI9IjE1Ii8+PHBhdGggZD0iTTMuNTkgMy41OUExLjk5IDEuOTkgMCAwIDAgMyA1djE0YTIgMiAwIDAgMCAyIDJoMTRjLjU1IDAgMS4wNTItLjIyIDEuNDEtLjU5Ii8+PHBhdGggZD0iTTIxIDE1VjVhMiAyIDAgMCAwLTItMkg5Ii8+PC9zdmc+";
+const TRANSPARENT_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 //#endregion
 //#region src/components/container/broken.tsx
@@ -320,10 +359,10 @@ const useSuspenseImage = (src) => {
 	if (typeof cached === "boolean") return cached;
 	if (!cached) {
 		cached = new Promise((resolve) => {
-			const img = new Image();
-			img.src = src;
-			img.onload = () => resolve(false);
-			img.onerror = () => resolve(true);
+			const img$1 = new Image();
+			img$1.src = src;
+			img$1.onload = () => resolve(false);
+			img$1.onerror = () => resolve(true);
 		}).then((hasError) => {
 			imageCache.set(src, hasError);
 			return hasError;
@@ -416,13 +455,11 @@ const ImageContainer = ({ src, alt, nodeKey, width, height, maxWidth, resizable 
 	const [isResizing, setIsResizing] = useState(false);
 	const [selection, setSelection] = useState(null);
 	const $onEnter = useCallback((event) => {
-		console.log("$onEnter");
 		const latestSelection = $getSelection();
 		if (isSelected && $isNodeSelection(latestSelection) && latestSelection.getNodes().length === 1) return true;
 		return false;
 	}, [isSelected]);
 	const $onEscape = useCallback((event) => {
-		console.log("$onEscape");
 		if (isSelected) {
 			$setSelection(null);
 			editor.update(() => {
@@ -534,9 +571,9 @@ const ImageContainer = ({ src, alt, nodeKey, width, height, maxWidth, resizable 
 //#region src/node.tsx
 const $createImageNode = ({ src, alt, width, height, maxWidth = 640, key }) => $applyNodeReplacement(new ImageNode(src, alt, maxWidth, key, width, height));
 const $convertImageElement = (domNode) => {
-	const img = domNode;
-	if (img.src.startsWith("file:///")) return null;
-	const { src, alt, width, height } = img;
+	const img$1 = domNode;
+	if (img$1.src.startsWith("file:///")) return null;
+	const { src, alt, width, height } = img$1;
 	return { node: $createImageNode({
 		src,
 		alt,
@@ -610,10 +647,11 @@ var ImageNode = class ImageNode extends DecoratorNode {
 		const theme = config.theme;
 		const className = theme.image;
 		if (className !== void 0) {
-			div.className = className;
+			div.className = `image-node ${className}`;
 			return div;
 		}
 		div.style.position = "relative";
+		div.className = "image-node";
 		return div;
 	}
 	updateDOM() {
@@ -646,22 +684,73 @@ var ImageNode = class ImageNode extends DecoratorNode {
 };
 
 //#endregion
+//#region src/handler.ts
+const img = document.createElement("img");
+img.src = TRANSPARENT_IMAGE;
+const $onInsert = (payload) => {
+	const imageNode = $createImageNode(payload);
+	$insertNodes([imageNode]);
+	if ($isRootOrShadowRoot(imageNode.getParentOrThrow())) $wrapNodeInElement(imageNode, $createParagraphNode).selectEnd();
+	return true;
+};
+const $onSwitch = (payload) => {
+	payload.forEach(({ node, storageSrc }) => {
+		node.setSrc(storageSrc);
+	});
+	return true;
+};
+const $onDragStart = (event) => {
+	const node = $getImageNodeInSelection();
+	if (!node) return false;
+	const dataTransfer = event.dataTransfer;
+	if (!dataTransfer) return false;
+	dataTransfer.setData("text/plain", "_");
+	dataTransfer.setDragImage(img, 0, 0);
+	dataTransfer.setData("application/x-lexical-drag", JSON.stringify({
+		data: {
+			key: node.getKey(),
+			src: node.__src,
+			alt: node.__alt,
+			width: node.__width,
+			height: node.__height,
+			maxWidth: node.__maxWidth
+		},
+		type: "image"
+	}));
+	return true;
+};
+const $onDragOver = (event) => {
+	const node = $getImageNodeInSelection();
+	if (!node) return false;
+	if (!canDropImage(event)) event.preventDefault();
+	return true;
+};
+const $onDrop = (event, editor) => {
+	const node = $getImageNodeInSelection();
+	if (!node) return false;
+	const data = getDragImageData(event);
+	if (!data) return false;
+	event.preventDefault();
+	if (canDropImage(event)) {
+		const range = getDragSelection(event);
+		node.remove();
+		const rangeSelection = $createRangeSelection();
+		if (range !== null && range !== void 0) rangeSelection.applyDOMRange(range);
+		$setSelection(rangeSelection);
+		editor.dispatchCommand(INSERT_IMAGE_COMMAND, data);
+	}
+	return true;
+};
+
+//#endregion
 //#region src/plugin.ts
 const ImagePlugin = () => {
 	const [editor] = useLexicalComposerContext();
 	useEffect(() => {
 		if (!editor.hasNodes([ImageNode])) throw new Error("ImagePlugin: ImageNode is not registered on editor");
-		return mergeRegister(editor.registerCommand(INSERT_IMAGE_COMMAND, (payload) => {
-			const imageNode = $createImageNode(payload);
-			$insertNodes([imageNode]);
-			if ($isRootOrShadowRoot(imageNode.getParentOrThrow())) $wrapNodeInElement(imageNode, $createParagraphNode).selectEnd();
-			return true;
-		}, COMMAND_PRIORITY_EDITOR), editor.registerCommand(SWITCH_IMAGES_COMMAND, (payload) => {
-			payload.forEach(({ node, storageSrc }) => {
-				node.setSrc(storageSrc);
-			});
-			return true;
-		}, COMMAND_PRIORITY_CRITICAL));
+		return mergeRegister(editor.registerCommand(INSERT_IMAGE_COMMAND, $onInsert, COMMAND_PRIORITY_EDITOR), editor.registerCommand(SWITCH_IMAGES_COMMAND, $onSwitch, COMMAND_PRIORITY_CRITICAL), editor.registerCommand(DRAGSTART_COMMAND, $onDragStart, COMMAND_PRIORITY_HIGH), editor.registerCommand(DRAGOVER_COMMAND, $onDragOver, COMMAND_PRIORITY_LOW), editor.registerCommand(DROP_COMMAND, (event) => {
+			return $onDrop(event, editor);
+		}, COMMAND_PRIORITY_HIGH));
 	}, [editor]);
 	return null;
 };
