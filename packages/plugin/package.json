@@ -1,6 +1,6 @@
 {
   "name": "@bvtter/lexical-image-plugin",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Resizable Image node for Lexical.",
   "keywords": [
     "react",
