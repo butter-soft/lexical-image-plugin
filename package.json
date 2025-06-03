@@ -1,6 +1,6 @@
 {
   "name": "@bvtter/lexical-image-plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Resizable Image node for Lexical.",
   "keywords": [
     "react",
@@ -16,41 +16,20 @@
     }
   ],
   "type": "module",
-  "scripts": {
-    "dev": "tsdown --watch",
-    "build": "tsdown",
-    "lint": "oxlint"
-  },
   "exports": {
     ".": {
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
+      "default": {
+        "types": "./packages/plugin/dist/index.d.ts",
+        "default": "./packages/plugin/dist/index.js"
       },
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+      "require": {
+        "types": "./packages/plugin/dist/index.d.cts",
+        "default": "./packages/plugin/dist/indext.cjs"
       }
     }
   },
-  "packageManager": "pnpm@10.10.0",
-  "devDependencies": {
-    "@types/react": "^19.1.3",
-    "@types/react-dom": "^19.1.3",
-    "oxlint": "^0.16.9",
-    "prettier": "^3.5.3",
-    "tsdown": "^0.11.9",
-    "typescript": "^5.8.3"
+  "scripts": {
+    "preinstall": "pnpm dlx only-allow pnpm"
   },
-  "dependencies": {
-    "@lexical/react": "^0.31.1",
-    "@lexical/utils": "^0.31.1",
-    "lexical": "^0.31.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
-  },
-  "peerDependencies": {
-    "lexical": "^0.31.1",
-    "react": "^19.1.0"
-  }
+  "packageManager": "pnpm@10.10.0"
 }

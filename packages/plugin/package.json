@@ -1,0 +1,45 @@
+{
+  "name": "@bvtter/lexical-image-plugin",
+  "version": "0.0.3",
+  "description": "Resizable Image node for Lexical.",
+  "keywords": [
+    "react",
+    "lexical",
+    "editor",
+    "image"
+  ],
+  "license": "MIT",
+  "contributors": [
+    {
+      "name": "Jung Wook Park",
+      "email": "jwpark@buttersoft.io"
+    }
+  ],
+  "type": "module",
+  "scripts": {
+    "watch": "tsdown --watch",
+    "build": "tsdown",
+    "lint": "oxlint"
+  },
+  "packageManager": "pnpm@10.10.0",
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "oxlint": "^0.16.12",
+    "prettier": "catalog:",
+    "tsdown": "^0.12.4",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@lexical/react": "catalog:",
+    "@lexical/rich-text": "catalog:",
+    "@lexical/utils": "catalog:",
+    "lexical": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "peerDependencies": {
+    "lexical": "catalog:",
+    "react": "catalog:"
+  }
+}
