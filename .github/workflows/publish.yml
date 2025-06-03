@@ -1,5 +1,9 @@
 name: Publish package to npm
 
+defaults:
+  run:
+    working-directory: "./packages/plugin"
+
 on:
   release:
     types: [created]
